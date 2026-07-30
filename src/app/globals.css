@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-sand text-ink font-sans antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+  }
+  :focus-visible {
+    outline: 2px solid theme("colors.forest.500");
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Road-marking divider — the one recurring signature motif */
+  .dash-divider {
+    @apply h-[2px] w-full bg-dash-rule bg-repeat-x opacity-70;
+    background-size: 20px 2px;
+  }
+
+  .card {
+    @apply rounded-card border border-forest-100 bg-paper shadow-card;
+  }
+
+  .field-label {
+    @apply mb-1 block text-sm font-medium text-forest-800;
+  }
+
+  .field-input {
+    @apply w-full rounded-md border border-forest-100 bg-paper px-3 py-2 text-sm text-ink placeholder:text-forest-300 focus:border-forest-400 focus:outline-none focus:ring-2 focus:ring-forest-100;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-md bg-forest-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-forest-600 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-forest-200 bg-paper px-4 py-2 text-sm font-medium text-forest-700 transition hover:bg-forest-50;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-forest-700 transition hover:bg-forest-50;
+  }
+
+  /* Identifiers (plate numbers, VT numbers, case codes) — stamped-record look */
+  .id-tag {
+    @apply font-mono text-xs tracking-wider text-forest-800;
+  }
+
+  .status-pill {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium;
+  }
+  .status-pill-draft {
+    @apply bg-amber-100 text-amber-500;
+  }
+  .status-pill-submitted {
+    @apply bg-forest-100 text-forest-700;
+  }
+}
