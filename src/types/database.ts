@@ -164,5 +164,22 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["cause_picklist"]["Row"]>;
       };
     };
+      inspections: {
+        Row: {
+          id: string;
+          accident_id: string;
+          vt_number: string;
+          inspected_at: string;
+          inspector_id: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["inspections"]["Row"]> & {
+          accident_id: string;
+          vt_number: string;
+          inspector_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["inspections"]["Row"]>;
+      };
+    };
   };
 }
