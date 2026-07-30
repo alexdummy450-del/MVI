@@ -163,7 +163,6 @@ export interface Database {
         };
         Update: Partial<Database["public"]["Tables"]["cause_picklist"]["Row"]>;
       };
-    };
       inspections: {
         Row: {
           id: string;
