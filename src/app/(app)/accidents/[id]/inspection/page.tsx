@@ -17,7 +17,7 @@ async function createInspection(formData: FormData) {
     vt_number: vtNumber,
     inspected_at: new Date(inspectedAt).toISOString(),
     inspector_id: user.id,
-  }as { accident_id: number; vt_number: string; inspected_at: string; inspector_id: string }););
+  }as { accident_id: number; vt_number: string; inspected_at: string; inspector_id: string });
 
   if (error) {
     console.error(error);
