@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 async function createInspection(formData: FormData) {
   "use server";
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
@@ -17,7 +17,7 @@ async function createInspection(formData: FormData) {
     vt_number: vtNumber,
     inspected_at: new Date(inspectedAt).toISOString(),
     inspector_id: user.id,
-  }as { accident_id: number; vt_number: string; inspected_at: string; inspector_id: string });
+  });
 
   if (error) {
     console.error(error);
