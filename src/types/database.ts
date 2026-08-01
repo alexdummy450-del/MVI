@@ -163,22 +163,84 @@ export interface Database {
         };
         Update: Partial<Database["public"]["Tables"]["cause_picklist"]["Row"]>;
       };
-      inspections: {
+      report_injury_counts: {
+        Row: {
+          report_id: string;
+          category: InjuryCategory;
+          person_type: PersonType;
+          count: number;
+        };
+        Insert: Partial<Database["public"]["Tables"]["report_injury_counts"]["Row"]> & {
+          report_id: string;
+          category: InjuryCategory;
+          person_type: PersonType;
+        };
+        Update: Partial<Database["public"]["Tables"]["report_injury_counts"]["Row"]>;
+      };
+      report_vehicle_details: {
         Row: {
           id: string;
-          accident_id: string;
-          vt_number: string;
-          inspected_at: string;
-          inspector_id: string;
-          created_at: string;
+          report_id: string;
+          accident_vehicle_id: string;
+          registered_owner: string | null;
+          sacco: string | null;
+          make_model_type: string | null;
+          damages: string | null;
+          speed_governor_status: string | null;
+          ks372_compliance: string | null;
+          insurance_details: string | null;
+          inspection_status: string | null;
+          pre_accident_condition: string | null;
         };
-        Insert: Partial<Database["public"]["Tables"]["inspections"]["Row"]> & {
-          accident_id: string;
-          vt_number: string;
-          inspector_id: string;
+        Insert: Partial<Database["public"]["Tables"]["report_vehicle_details"]["Row"]> & {
+          report_id: string;
+          accident_vehicle_id: string;
         };
-        Update: Partial<Database["public"]["Tables"]["inspections"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["report_vehicle_details"]["Row"]>;
       };
+      report_driver_details: {
+        Row: {
+          id: string;
+          report_id: string;
+          accident_vehicle_id: string;
+          driver_name: string | null;
+          driver_id_no: string | null;
+          driver_dl_no: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["report_driver_details"]["Row"]> & {
+          report_id: string;
+          accident_vehicle_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["report_driver_details"]["Row"]>;
+      };
+      report_causes: {
+        Row: {
+          id: string;
+          report_id: string;
+          type: CauseType;
+          picklist_id: string | null;
+          text: string;
+          sort_order: number;
+        };
+        Insert: Partial<Database["public"]["Tables"]["report_causes"]["Row"]> & {
+          report_id: string;
+          type: CauseType;
+          text: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["report_causes"]["Row"]>;
+      };
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      [_ in never]: never;
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+    CompositeTypes: {
+      [_ in never]: never;
     };
   };
 }

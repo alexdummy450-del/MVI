@@ -31,7 +31,7 @@ async function createInspection(formData: FormData) {
     .single();
 
   revalidatePath(`/accidents/${accidentId}`);
-  
+
   if (accident?.nature === "fatal") {
     redirect(`/accidents/${accidentId}/report`);
   } else {
@@ -56,7 +56,7 @@ export default function InspectionPage({ params }: { params: { id: string } }) {
 
       <form action={createInspection} className="card p-6 space-y-6 shadow-sm border border-forest-100">
         <input type="hidden" name="accidentId" value={params.id} />
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label htmlFor="vtNumber" className="block text-sm font-medium text-forest-800">

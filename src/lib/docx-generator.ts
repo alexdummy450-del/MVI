@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
+// @ts-ignore
 import ImageModule from 'docxtemplater-image-module-free';
 
 export async function generateDocxBuffer(supabase: any, id: string): Promise<Buffer> {
@@ -183,7 +184,6 @@ export async function generateDocxBuffer(supabase: any, id: string): Promise<Buf
     "VT NUMBER(S)": vtNumbers,
     "VEHICLE 1 REG NO": accident?.primary_vehicle?.plate_number || 'UNKNOWN',
     "VEHICLE 1 MAKE/TYPE": accident?.primary_vehicle?.make ? `${accident.primary_vehicle.make} ${accident.primary_vehicle.model || ''}` : '',
-    "VEHICLE 2 REG NO": 'N/A',
     "TOWING TRAILER REG NO. IF ANY": 'N/A',
     "ROAD NAME": accident?.location_text || 'UNKNOWN',
     "LOCATION": accident?.location_text || 'UNKNOWN',

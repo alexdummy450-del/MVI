@@ -116,7 +116,7 @@ export async function createAccident(input: CreateAccidentInput) {
 
   // Primary vehicle is always accident_vehicles row #0
   const accidentVehicleRows = [
-    { accident_id: accident.id, vehicle_id: primaryVehicleId, is_unidentified: false, is_primary: true, sort_order: 0 },
+    { accident_id: accident.id, vehicle_id: primaryVehicleId as string | null, is_unidentified: false, is_primary: true, sort_order: 0 },
   ];
 
   for (const [idx, entry] of input.vehiclesInvolved.entries()) {

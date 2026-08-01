@@ -53,7 +53,7 @@ export async function GET(request: Request) {
 
     const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
 
-    return new NextResponse(zipBuffer, {
+    return new NextResponse(zipBuffer as any, {
       headers: {
         'Content-Type': 'application/zip',
         'Content-Disposition': `attachment; filename=Monthly_Reports_${month}.zip`,

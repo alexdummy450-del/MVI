@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const supabase = createClient();
     const buf = await generateDocxBuffer(supabase, id);
 
-    return new NextResponse(buf, {
+    return new NextResponse(buf as any, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'Content-Disposition': `attachment; filename=Draft_Report_Case_${id.slice(0, 8).toUpperCase()}.docx`,
