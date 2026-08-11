@@ -13,7 +13,9 @@ export async function submitFinalReport(formData: FormData) {
   const accidentId = formData.get("accidentId") as string;
   const isDraft = formData.get("isDraft") === "true";
 
-  const payload = {
+  const { data: existing } = await supabase.from("reports").select("id, status, submitted_at").eq("accident_id", accidentId).maybeSingle();
+
+  const payload: any = {
     accident_id: accidentId,
     inspector_id: user.id,
     recipient_office: formData.get("recipientOffice") as string,
@@ -26,10 +28,17 @@ export async function submitFinalReport(formData: FormData) {
     point_of_impact: formData.get("pointOfImpact") as string,
     cause_code: formData.get("causeCode") as string,
     status: isDraft ? "draft" : "submitted" as const,
-    submitted_at: isDraft ? null : new Date().toISOString(),
   };
 
-  const { data: existing } = await supabase.from("reports").select("id").eq("accident_id", accidentId).maybeSingle();
+  if (isDraft) {
+    payload.submitted_at = null;
+  } else if (!existing || existing.status !== "submitted") {
+    // Only set submitted_at to now if it's the first time being submitted
+    payload.submitted_at = new Date().toISOString();
+  } else {
+    // Preserve existing submitted_at if already submitted
+    payload.submitted_at = existing.submitted_at;
+  }
 
   let error;
   if (existing) {

@@ -26,6 +26,7 @@ export default async function ReportPage({ params }: { params: { id: string } })
   }
 
   const initialData = {
+    status: report?.status || "draft",
     recipientOffice: report?.recipient_office || (accident?.traffic_base ? `${accident.traffic_base.toUpperCase()} TRAFFIC BASE` : ""),
     subjectLine: report?.subject_line || defaultSubjectLine,
     roadCondition: report?.road_condition || "",
