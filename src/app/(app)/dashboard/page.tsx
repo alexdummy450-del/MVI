@@ -207,9 +207,16 @@ export default async function DashboardPage({
                             </span>
                           )}
                           {status === "submitted" && (
-                            <a href={`/api/export-docx?id=${a.id}`} className="p-1.5 text-forest-500 hover:text-forest-800 hover:bg-forest-100 rounded-md transition-colors" title="Download Final Report">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                            </a>
+                            <div className="flex items-center gap-1">
+                              <Link href={`/accidents/${a.id}/report`} className="p-1.5 text-forest-500 hover:text-forest-800 hover:bg-forest-100 rounded-md transition-colors" title="Edit Report">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </Link>
+                              <a href={`/api/export-docx?id=${a.id}`} className="p-1.5 text-forest-500 hover:text-forest-800 hover:bg-forest-100 rounded-md transition-colors" title="Download Final Report">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                              </a>
+                            </div>
                           )}
                         </div>
                       ) : (
