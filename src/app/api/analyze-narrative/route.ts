@@ -20,7 +20,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Gemini API Key is not configured in environment variables." }, { status: 500 });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
+    const cleanKey = apiKey.trim().replace(/^["']|["']$/g, "");
+
+    const genAI = new GoogleGenerativeAI(cleanKey);
 
     const prompt = `
 You are a senior Motor Vehicle Inspector and crash investigator. 
@@ -28,7 +30,7 @@ Given the following crash reconstruction narrative, extract and analyze the deta
 1. Probable Cause: A concise statement of the main cause of the crash (e.g. "Speeding", "Improper Overtaking", "Mechanical Failure").
 2. Contributing Factors: Any secondary factors that contributed (e.g. weather, road conditions, driver fatigue).
 3. Observations & Recommendations: What actions should be taken or were observed to prevent future occurrences.
-Give at least three points on each. 
+4. Give at least three points on each. 
 
 Crash Narrative:
 "${narrative}"
@@ -57,23 +59,25 @@ Crash Narrative:
     };
 
     let result;
-    try {
-      const model = genAI.getGenerativeModel({ 
-        model: "gemini-3.5-flash",
-        generationConfig: generationConfig as any
-      });
-      result = await model.generateContent(prompt);
-    } catch (error: any) {
-      if (error.message && error.message.includes("503")) {
-        console.warn("Gemini API 503 High Demand, falling back to gemini-3.5-flash-lite...");
-        const liteModel = genAI.getGenerativeModel({ 
-          model: "gemini-3.5-flash-lite",
+    const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash"];
+    let lastError: any = null;
+
+    for (const modelName of modelsToTry) {
+      try {
+        const model = genAI.getGenerativeModel({ 
+          model: modelName,
           generationConfig: generationConfig as any
         });
-        result = await liteModel.generateContent(prompt);
-      } else {
-        throw error;
+        result = await model.generateContent(prompt);
+        if (result) break;
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`Model ${modelName} failed:`, err.message);
       }
+    }
+
+    if (!result) {
+      throw lastError || new Error("Failed to generate content with Gemini API");
     }
 
     const responseText = result.response.text();
