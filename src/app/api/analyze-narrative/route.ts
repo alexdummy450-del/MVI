@@ -9,11 +9,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Narrative is required" }, { status: 400 });
     }
 
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json({ error: "Gemini API Key is not configured" }, { status: 500 });
+    const apiKey =
+      process.env.GEMINI_API_KEY ||
+      process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+      process.env.GOOGLE_GEMINI_API_KEY ||
+      process.env.GEMINI_KEY ||
+      process.env.GOOGLE_API_KEY;
+
+    if (!apiKey) {
+      return NextResponse.json({ error: "Gemini API Key is not configured in environment variables." }, { status: 500 });
     }
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const genAI = new GoogleGenerativeAI(apiKey);
 
     const prompt = `
 You are a senior Motor Vehicle Inspector and crash investigator. 
