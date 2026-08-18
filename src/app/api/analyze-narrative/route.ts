@@ -9,6 +9,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Narrative is required" }, { status: 400 });
     }
 
+    const matchedVarName = 
+      process.env.GEMINI_API_KEY ? "GEMINI_API_KEY" :
+      process.env.NEXT_PUBLIC_GEMINI_API_KEY ? "NEXT_PUBLIC_GEMINI_API_KEY" :
+      process.env.GOOGLE_GEMINI_API_KEY ? "GOOGLE_GEMINI_API_KEY" :
+      process.env.GEMINI_KEY ? "GEMINI_KEY" :
+      process.env.GOOGLE_API_KEY ? "GOOGLE_API_KEY" : "NONE";
+
     const apiKey =
       process.env.GEMINI_API_KEY ||
       process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
@@ -21,6 +28,14 @@ export async function POST(request: Request) {
     }
 
     const cleanKey = apiKey.trim().replace(/^["']|["']$/g, "");
+    const keyPrefix = cleanKey.slice(0, 6);
+    const keyLen = cleanKey.length;
+
+    if (!cleanKey.startsWith("AIza")) {
+      return NextResponse.json({ 
+        error: `Invalid Gemini API Key format (loaded from ${matchedVarName}). Key starts with "${keyPrefix}..." (length: ${keyLen}). Gemini API keys must be created at https://aistudio.google.com/ and start with "AIzaSy...".` 
+      }, { status: 500 });
+    }
 
     const genAI = new GoogleGenerativeAI(cleanKey);
 
