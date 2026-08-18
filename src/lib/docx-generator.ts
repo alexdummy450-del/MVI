@@ -140,6 +140,10 @@ export async function generateDocxBuffer(supabase: any, id: string): Promise<Buf
   const primaryVehicle = VEHICLES.find((v: any) => v.REG_NO === accident?.primary_vehicle?.plate_number) || VEHICLES[0];
   const primaryPhotoBuffer = (primaryVehicle as any)?.VEHICLE_PHOTO || null;
 
+  // Fallback 1x1 WHITE PNG to prevent docxtemplater image module from crashing on missing photos
+  // Using white instead of transparent because MS Word renders transparent backgrounds as black boxes.
+  const emptyImageBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=";
+
   // Load the template from the public folder
   const templatePath = path.join(process.cwd(), 'public', 'Fatal_RTA_Report_Template.docx');
   const content = fs.readFileSync(templatePath, 'binary');
@@ -149,7 +153,7 @@ export async function generateDocxBuffer(supabase: any, id: string): Promise<Buf
   const imageOptions = {
     centered: false,
     getImage: (tagValue: any) => {
-      return tagValue; // tagValue is the Buffer we pass in the render object
+      return Buffer.from(tagValue, 'base64');
     },
     getSize: () => {
       return [300, 200]; // Fixed size [width, height]
@@ -173,7 +177,24 @@ export async function generateDocxBuffer(supabase: any, id: string): Promise<Buf
   const day = d.getDate();
   const monthName = d.toLocaleString('default', { month: 'long' });
   const year = d.getFullYear();
-  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  // Helper to split text block into individual points
+  const splitPoints = (text: string | undefined | null, max: number) => {
+    if (!text) return Array(max).fill("");
+    const lines = text.split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+      // Remove bullets/numbers (e.g., "1. ", "* ", "- ")
+      .map(line => line.replace(/^[-*•\d\.]+\s*/, '').trim())
+      // Filter out short headers like "Probable Causes:"
+      .filter(line => line.length > 5 && !line.toLowerCase().endsWith(':'));
+      
+    while (lines.length < max) lines.push("");
+    return lines.slice(0, max);
+  };
+
+  const causes = splitPoints(report?.cause_code, 7);
+  const factors = splitPoints(report?.contributing_factors, 7);
+  const recommendations = splitPoints(report?.recommendations, 8);
 
   doc.render({
     "STATION / V.I.C NAME": report?.recipient_office || (accident?.traffic_base ? `${accident.traffic_base.toUpperCase()} TRAFFIC BASE` : ''),
@@ -294,7 +315,37 @@ export async function generateDocxBuffer(supabase: any, id: string): Promise<Buf
     "INSPECTOR'S NAME": inspectorName,
     "QUALIFICATIONS/DESIGNATIONS": inspectorCredentials,
     "TITLE / STATION": `${inspectorTitle} / ${report?.recipient_office || accident?.traffic_base || ''}`,
-    "%PRIMARY_VEHICLE_PHOTO": primaryPhotoBuffer,
+    "PRIMARY_VEHICLE_PHOTO": primaryPhotoBuffer ? primaryPhotoBuffer.toString('base64') : emptyImageBase64,
+    "VEHICLE_2_PHOTO": (VEHICLES[1] as any)?.VEHICLE_PHOTO ? (VEHICLES[1] as any).VEHICLE_PHOTO.toString('base64') : emptyImageBase64,
+    "VEHICLE_3_PHOTO": (VEHICLES[2] as any)?.VEHICLE_PHOTO ? (VEHICLES[2] as any).VEHICLE_PHOTO.toString('base64') : emptyImageBase64,
+    
+    // Probable Cause mapping
+    "Probable cause 1 -- describe.": causes[0],
+    "Probable cause 2 -- describe.": causes[1],
+    "Probable cause 3 -- describe.": causes[2],
+    "Probable cause 4 -- describe.": causes[3],
+    "Probable cause 5 -- describe.": causes[4],
+    "Probable cause 6 -- describe.": causes[5],
+    "Probable cause 7 -- describe.": causes[6],
+    
+    // Contributing Factors mapping
+    "Contributing factor 1 -- describe.": factors[0],
+    "Contributing factor 2 -- describe.": factors[1],
+    "Contributing factor 3 -- describe.": factors[2],
+    "Contributing factor 4 -- describe.": factors[3],
+    "Contributing factor 5 -- describe.": factors[4],
+    "Contributing factor 6 -- describe.": factors[5],
+    "Contributing factor 7 -- describe.": factors[6],
+
+    // Recommendations mapping
+    "Recommendation 1.": recommendations[0],
+    "Recommendation 2.": recommendations[1],
+    "Recommendation 3.": recommendations[2],
+    "Recommendation 4.": recommendations[3],
+    "Recommendation 5.": recommendations[4],
+    "Recommendation 6.": recommendations[5],
+    "Recommendation 7.": recommendations[6],
+    "Recommendation 8.": recommendations[7],
   });
 
   const buf = doc.getZip().generate({

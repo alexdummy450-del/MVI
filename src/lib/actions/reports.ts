@@ -27,6 +27,8 @@ export async function submitFinalReport(formData: FormData) {
     reconstruction_narrative: formData.get("reconstructionNarrative") as string,
     point_of_impact: formData.get("pointOfImpact") as string,
     cause_code: formData.get("causeCode") as string,
+    contributing_factors: formData.get("contributingFactors") as string,
+    recommendations: formData.get("recommendations") as string,
     status: isDraft ? "draft" : "submitted" as const,
   };
 
@@ -52,6 +54,29 @@ export async function submitFinalReport(formData: FormData) {
   if (error) {
     console.error("Failed to save report", error);
     throw new Error("Failed to save report: " + error.message);
+  }
+
+  // Handle photos
+  const vehiclePhotosStr = formData.get("vehiclePhotos") as string;
+  if (vehiclePhotosStr) {
+    const vehiclePhotos = JSON.parse(vehiclePhotosStr);
+    const photoRows = Object.entries(vehiclePhotos)
+      .filter(([_, photo]) => photo !== null)
+      .map(([vehicleId, photo]: [string, any]) => ({
+        accident_id: accidentId,
+        vehicle_id: vehicleId,
+        storage_path: photo.storagePath,
+        caption: photo.caption || "Vehicle Photo",
+        stage: "report" as const
+      }));
+
+    // Delete existing photos for this accident to avoid duplicates
+    await supabase.from("photos").delete().eq("accident_id", accidentId);
+    
+    if (photoRows.length > 0) {
+      const { error: photoError } = await supabase.from("photos").insert(photoRows);
+      if (photoError) console.error("Error saving photos:", photoError);
+    }
   }
 
   // Refresh the dashboard so it instantly reflects the new status

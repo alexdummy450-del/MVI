@@ -109,6 +109,7 @@ export interface Database {
           inspected_at: string;
           inspector_id: string;
           created_at: string;
+          vtb_image_path: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["inspections"]["Row"]> & {
           accident_id: string;
