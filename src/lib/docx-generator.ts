@@ -177,6 +177,7 @@ export async function generateDocxBuffer(supabase: any, id: string): Promise<Buf
   const day = d.getDate();
   const monthName = d.toLocaleString('default', { month: 'long' });
   const year = d.getFullYear();
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   // Helper to split text block into individual points
   const splitPoints = (text: string | undefined | null, max: number) => {
     if (!text) return Array(max).fill("");

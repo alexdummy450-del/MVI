@@ -51,19 +51,19 @@ Crash Narrative:
 
     let result;
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
-      result = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig,
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-3.5-flash",
+        generationConfig: generationConfig as any
       });
+      result = await model.generateContent(prompt);
     } catch (error: any) {
       if (error.message && error.message.includes("503")) {
         console.warn("Gemini API 503 High Demand, falling back to gemini-3.5-flash-lite...");
-        const liteModel = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
-        result = await liteModel.generateContent({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig,
+        const liteModel = genAI.getGenerativeModel({ 
+          model: "gemini-3.5-flash-lite",
+          generationConfig: generationConfig as any
         });
+        result = await liteModel.generateContent(prompt);
       } else {
         throw error;
       }
