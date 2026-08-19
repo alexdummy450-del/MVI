@@ -9,13 +9,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Narrative is required" }, { status: 400 });
     }
 
-    const matchedVarName = 
-      process.env.GEMINI_API_KEY ? "GEMINI_API_KEY" :
-      process.env.NEXT_PUBLIC_GEMINI_API_KEY ? "NEXT_PUBLIC_GEMINI_API_KEY" :
-      process.env.GOOGLE_GEMINI_API_KEY ? "GOOGLE_GEMINI_API_KEY" :
-      process.env.GEMINI_KEY ? "GEMINI_KEY" :
-      process.env.GOOGLE_API_KEY ? "GOOGLE_API_KEY" : "NONE";
-
     const apiKey =
       process.env.GEMINI_API_KEY ||
       process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
@@ -28,16 +21,6 @@ export async function POST(request: Request) {
     }
 
     const cleanKey = apiKey.trim().replace(/^["']|["']$/g, "");
-    const keyPrefix = cleanKey.slice(0, 6);
-    const keyLen = cleanKey.length;
-
-    if (!cleanKey.startsWith("AIza")) {
-      return NextResponse.json({ 
-        error: `Invalid Gemini API Key format (loaded from ${matchedVarName}). Key starts with "${keyPrefix}..." (length: ${keyLen}). Gemini API keys must be created at https://aistudio.google.com/ and start with "AIzaSy...".` 
-      }, { status: 500 });
-    }
-
-    const genAI = new GoogleGenerativeAI(cleanKey);
 
     const prompt = `
 You are a senior Motor Vehicle Inspector and crash investigator. 
@@ -51,54 +34,105 @@ Crash Narrative:
 "${narrative}"
     `;
 
-    const generationConfig = {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: SchemaType.OBJECT,
-        properties: {
-          probableCause: {
-            type: SchemaType.STRING,
-            description: "A concise statement of the main cause of the crash",
+    // 1. If key is standard API Key (starts with AIza...)
+    if (cleanKey.startsWith("AIza")) {
+      const genAI = new GoogleGenerativeAI(cleanKey);
+      const generationConfig = {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: SchemaType.OBJECT,
+          properties: {
+            probableCause: {
+              type: SchemaType.STRING,
+              description: "A concise statement of the main cause of the crash",
+            },
+            contributingFactors: {
+              type: SchemaType.STRING,
+              description: "Any secondary factors that contributed",
+            },
+            recommendations: {
+              type: SchemaType.STRING,
+              description: "What actions should be taken or were observed to prevent future occurrences",
+            },
           },
-          contributingFactors: {
-            type: SchemaType.STRING,
-            description: "Any secondary factors that contributed",
-          },
-          recommendations: {
-            type: SchemaType.STRING,
-            description: "What actions should be taken or were observed to prevent future occurrences",
-          },
+          required: ["probableCause", "contributingFactors", "recommendations"],
         },
-        required: ["probableCause", "contributingFactors", "recommendations"],
-      },
-    };
+      };
 
-    let result;
+      const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash"];
+      let result;
+      let lastError: any = null;
+
+      for (const modelName of modelsToTry) {
+        try {
+          const model = genAI.getGenerativeModel({ 
+            model: modelName,
+            generationConfig: generationConfig as any
+          });
+          result = await model.generateContent(prompt);
+          if (result) break;
+        } catch (err: any) {
+          lastError = err;
+        }
+      }
+
+      if (!result) throw lastError || new Error("Failed to generate content with API Key");
+
+      const responseText = result.response.text();
+      return NextResponse.json(JSON.parse(responseText));
+    }
+
+    // 2. If key is an OAuth / Access Token (starts with AQ... or ya29... etc.)
     const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash"];
-    let lastError: any = null;
+    let parsedData = null;
+    let lastRestError: any = null;
 
     for (const modelName of modelsToTry) {
       try {
-        const model = genAI.getGenerativeModel({ 
-          model: modelName,
-          generationConfig: generationConfig as any
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${cleanKey}`,
+          },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: "OBJECT",
+                properties: {
+                  probableCause: { type: "STRING" },
+                  contributingFactors: { type: "STRING" },
+                  recommendations: { type: "STRING" },
+                },
+                required: ["probableCause", "contributingFactors", "recommendations"],
+              },
+            },
+          }),
         });
-        result = await model.generateContent(prompt);
-        if (result) break;
+
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json.error?.message || `HTTP ${res.status}: ${res.statusText}`);
+        }
+
+        const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+          parsedData = JSON.parse(text);
+          break;
+        }
       } catch (err: any) {
-        lastError = err;
-        console.warn(`Model ${modelName} failed:`, err.message);
+        lastRestError = err;
       }
     }
 
-    if (!result) {
-      throw lastError || new Error("Failed to generate content with Gemini API");
+    if (parsedData) {
+      return NextResponse.json(parsedData);
     }
 
-    const responseText = result.response.text();
-    const parsedData = JSON.parse(responseText);
+    throw lastRestError || new Error("Failed to authenticate token with Gemini REST API.");
 
-    return NextResponse.json(parsedData);
   } catch (error: any) {
     console.error("Gemini API Error:", error);
     return NextResponse.json({ error: error.message || "Failed to analyze narrative" }, { status: 500 });
