@@ -34,59 +34,80 @@ Crash Narrative:
 "${narrative}"
     `;
 
-    // 1. If key is standard API Key (starts with AIza...)
-    if (cleanKey.startsWith("AIza")) {
-      const genAI = new GoogleGenerativeAI(cleanKey);
-      const generationConfig = {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: SchemaType.OBJECT,
-          properties: {
-            probableCause: {
-              type: SchemaType.STRING,
-              description: "A concise statement of the main cause of the crash",
-            },
-            contributingFactors: {
-              type: SchemaType.STRING,
-              description: "Any secondary factors that contributed",
-            },
-            recommendations: {
-              type: SchemaType.STRING,
-              description: "What actions should be taken or were observed to prevent future occurrences",
-            },
-          },
-          required: ["probableCause", "contributingFactors", "recommendations"],
-        },
-      };
-
-      const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash"];
-      let result;
-      let lastError: any = null;
-
-      for (const modelName of modelsToTry) {
-        try {
-          const model = genAI.getGenerativeModel({ 
-            model: modelName,
-            generationConfig: generationConfig as any
-          });
-          result = await model.generateContent(prompt);
-          if (result) break;
-        } catch (err: any) {
-          lastError = err;
-        }
-      }
-
-      if (!result) throw lastError || new Error("Failed to generate content with API Key");
-
-      const responseText = result.response.text();
-      return NextResponse.json(JSON.parse(responseText));
-    }
-
-    // 2. If key is an OAuth / Access Token (starts with AQ... or ya29... etc.)
     const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash"];
     let parsedData = null;
-    let lastRestError: any = null;
+    let errors: string[] = [];
 
+    // Approach 1: Google REST API with ?key= and x-goog-api-key header (Works for all AI Studio keys including AQ... and AIza...)
+    for (const modelName of modelsToTry) {
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${cleanKey}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": cleanKey,
+          },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: "OBJECT",
+                properties: {
+                  probableCause: { type: "STRING" },
+                  contributingFactors: { type: "STRING" },
+                  recommendations: { type: "STRING" },
+                },
+                required: ["probableCause", "contributingFactors", "recommendations"],
+              },
+            },
+          }),
+        });
+
+        const json = await res.json();
+        if (res.ok && json.candidates?.[0]?.content?.parts?.[0]?.text) {
+          parsedData = JSON.parse(json.candidates[0].content.parts[0].text);
+          break;
+        } else if (json.error?.message) {
+          errors.push(`REST API key: ${json.error.message}`);
+        }
+      } catch (err: any) {
+        errors.push(`REST API key fetch error: ${err.message}`);
+      }
+    }
+
+    if (parsedData) return NextResponse.json(parsedData);
+
+    // Approach 2: Official GoogleGenerativeAI SDK
+    for (const modelName of modelsToTry) {
+      try {
+        const genAI = new GoogleGenerativeAI(cleanKey);
+        const generationConfig = {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: SchemaType.OBJECT,
+            properties: {
+              probableCause: { type: SchemaType.STRING },
+              contributingFactors: { type: SchemaType.STRING },
+              recommendations: { type: SchemaType.STRING },
+            },
+            required: ["probableCause", "contributingFactors", "recommendations"],
+          },
+        };
+        const model = genAI.getGenerativeModel({ model: modelName, generationConfig: generationConfig as any });
+        const result = await model.generateContent(prompt);
+        if (result?.response?.text()) {
+          parsedData = JSON.parse(result.response.text());
+          break;
+        }
+      } catch (err: any) {
+        errors.push(`SDK: ${err.message}`);
+      }
+    }
+
+    if (parsedData) return NextResponse.json(parsedData);
+
+    // Approach 3: REST API with Bearer token header
     for (const modelName of modelsToTry) {
       try {
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`, {
@@ -113,25 +134,20 @@ Crash Narrative:
         });
 
         const json = await res.json();
-        if (!res.ok) {
-          throw new Error(json.error?.message || `HTTP ${res.status}: ${res.statusText}`);
-        }
-
-        const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) {
-          parsedData = JSON.parse(text);
+        if (res.ok && json.candidates?.[0]?.content?.parts?.[0]?.text) {
+          parsedData = JSON.parse(json.candidates[0].content.parts[0].text);
           break;
+        } else if (json.error?.message) {
+          errors.push(`REST Bearer: ${json.error.message}`);
         }
       } catch (err: any) {
-        lastRestError = err;
+        errors.push(`REST Bearer error: ${err.message}`);
       }
     }
 
-    if (parsedData) {
-      return NextResponse.json(parsedData);
-    }
+    if (parsedData) return NextResponse.json(parsedData);
 
-    throw lastRestError || new Error("Failed to authenticate token with Gemini REST API.");
+    throw new Error(errors.join(" | ") || "Failed to analyze narrative with Gemini API.");
 
   } catch (error: any) {
     console.error("Gemini API Error:", error);
