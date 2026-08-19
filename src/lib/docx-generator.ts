@@ -126,19 +126,28 @@ export async function generateDocxBuffer(supabase: any, id: string): Promise<Buf
     };
   });
 
+  // Fallback 1x1 WHITE PNG to prevent docxtemplater image module from crashing on missing photos
+  const emptyImageBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=";
+
   // Resolve images
   for (const v of VEHICLES) {
     if (v._storagePath) {
       const { data: fileData } = await supabase.storage.from('accident-photos').download(v._storagePath);
-      (v as any).VEHICLE_PHOTO = fileData ? Buffer.from(await fileData.arrayBuffer()) : null;
+      (v as any)._photoBase64 = fileData ? Buffer.from(await fileData.arrayBuffer()).toString('base64') : emptyImageBase64;
     } else {
-      (v as any).VEHICLE_PHOTO = null;
+      (v as any)._photoBase64 = emptyImageBase64;
     }
+    (v as any).VEHICLE_PHOTO = (v as any)._photoBase64;
+    (v as any)["%VEHICLE_PHOTO"] = (v as any)._photoBase64;
+    (v as any).VTB_PHOTO = (v as any)._photoBase64;
+    (v as any)["%VTB_PHOTO"] = (v as any)._photoBase64;
+    (v as any).VTB_IMAGE = (v as any)._photoBase64;
+    (v as any)["%VTB_IMAGE"] = (v as any)._photoBase64;
   }
 
   // Keep primary image for backward compatibility
   const primaryVehicle = VEHICLES.find((v: any) => v.REG_NO === accident?.primary_vehicle?.plate_number) || VEHICLES[0];
-  const primaryPhotoBuffer = (primaryVehicle as any)?.VEHICLE_PHOTO || null;
+  const primaryPhotoBuffer = (primaryVehicle as any)?._photoBase64 !== emptyImageBase64 ? (primaryVehicle as any)._photoBase64 : null;
 
   // Fallback 1x1 WHITE PNG to prevent docxtemplater image module from crashing on missing photos
   // Using white instead of transparent because MS Word renders transparent backgrounds as black boxes.
@@ -316,9 +325,22 @@ export async function generateDocxBuffer(supabase: any, id: string): Promise<Buf
     "INSPECTOR'S NAME": inspectorName,
     "QUALIFICATIONS/DESIGNATIONS": inspectorCredentials,
     "TITLE / STATION": `${inspectorTitle} / ${report?.recipient_office || accident?.traffic_base || ''}`,
-    "PRIMARY_VEHICLE_PHOTO": primaryPhotoBuffer ? primaryPhotoBuffer.toString('base64') : emptyImageBase64,
-    "VEHICLE_2_PHOTO": (VEHICLES[1] as any)?.VEHICLE_PHOTO ? (VEHICLES[1] as any).VEHICLE_PHOTO.toString('base64') : emptyImageBase64,
-    "VEHICLE_3_PHOTO": (VEHICLES[2] as any)?.VEHICLE_PHOTO ? (VEHICLES[2] as any).VEHICLE_PHOTO.toString('base64') : emptyImageBase64,
+    // Image Tag Aliases (Supports [%PRIMARY_VEHICLE_PHOTO], [%VTB_PHOTO], [%VTB_IMAGE], [%VEHICLE_1_PHOTO], etc.)
+    "PRIMARY_VEHICLE_PHOTO": primaryPhotoBuffer || emptyImageBase64,
+    "%PRIMARY_VEHICLE_PHOTO": primaryPhotoBuffer || emptyImageBase64,
+    "VEHICLE_1_PHOTO": primaryPhotoBuffer || emptyImageBase64,
+    "%VEHICLE_1_PHOTO": primaryPhotoBuffer || emptyImageBase64,
+    "VTB_PHOTO": primaryPhotoBuffer || emptyImageBase64,
+    "%VTB_PHOTO": primaryPhotoBuffer || emptyImageBase64,
+    "VTB_IMAGE": primaryPhotoBuffer || emptyImageBase64,
+    "%VTB_IMAGE": primaryPhotoBuffer || emptyImageBase64,
+    "VEHICLE_PHOTO": primaryPhotoBuffer || emptyImageBase64,
+    "%VEHICLE_PHOTO": primaryPhotoBuffer || emptyImageBase64,
+
+    "VEHICLE_2_PHOTO": (VEHICLES[1] as any)?._photoBase64 || emptyImageBase64,
+    "%VEHICLE_2_PHOTO": (VEHICLES[1] as any)?._photoBase64 || emptyImageBase64,
+    "VEHICLE_3_PHOTO": (VEHICLES[2] as any)?._photoBase64 || emptyImageBase64,
+    "%VEHICLE_3_PHOTO": (VEHICLES[2] as any)?._photoBase64 || emptyImageBase64,
     
     // Probable Cause mapping
     "Probable cause 1 -- describe.": causes[0],
