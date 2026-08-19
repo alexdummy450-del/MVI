@@ -129,11 +129,24 @@ export async function generateDocxBuffer(supabase: any, id: string): Promise<Buf
   // Fallback 1x1 WHITE PNG to prevent docxtemplater image module from crashing on missing photos
   const emptyImageBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=";
 
-  // Resolve images
+  let firstAvailablePhotoBase64: string | null = null;
+
+  // Resolve images per vehicle
   for (const v of VEHICLES) {
     if (v._storagePath) {
-      const { data: fileData } = await supabase.storage.from('accident-photos').download(v._storagePath);
-      (v as any)._photoBase64 = fileData ? Buffer.from(await fileData.arrayBuffer()).toString('base64') : emptyImageBase64;
+      try {
+        const { data: fileData } = await supabase.storage.from('accident-photos').download(v._storagePath);
+        if (fileData) {
+          const b64 = Buffer.from(await fileData.arrayBuffer()).toString('base64');
+          (v as any)._photoBase64 = b64;
+          if (!firstAvailablePhotoBase64) firstAvailablePhotoBase64 = b64;
+        } else {
+          (v as any)._photoBase64 = emptyImageBase64;
+        }
+      } catch (e) {
+        console.error("Error downloading photo:", e);
+        (v as any)._photoBase64 = emptyImageBase64;
+      }
     } else {
       (v as any)._photoBase64 = emptyImageBase64;
     }
@@ -145,9 +158,24 @@ export async function generateDocxBuffer(supabase: any, id: string): Promise<Buf
     (v as any)["%VTB_IMAGE"] = (v as any)._photoBase64;
   }
 
-  // Keep primary image for backward compatibility
-  const primaryVehicle = VEHICLES.find((v: any) => v.REG_NO === accident?.primary_vehicle?.plate_number) || VEHICLES[0];
-  const primaryPhotoBuffer = (primaryVehicle as any)?._photoBase64 !== emptyImageBase64 ? (primaryVehicle as any)._photoBase64 : null;
+  // Fallback: If primary vehicle photo was not matched by vehicle_id, grab the first photo for this accident
+  if (!firstAvailablePhotoBase64 && photos && photos.length > 0) {
+    for (const p of photos) {
+      if (p.storage_path) {
+        try {
+          const { data: fileData } = await supabase.storage.from('accident-photos').download(p.storage_path);
+          if (fileData) {
+            firstAvailablePhotoBase64 = Buffer.from(await fileData.arrayBuffer()).toString('base64');
+            break;
+          }
+        } catch (e) {
+          console.error("Error downloading fallback photo:", e);
+        }
+      }
+    }
+  }
+
+  const primaryPhotoBuffer = firstAvailablePhotoBase64 || emptyImageBase64;
 
   // Fallback 1x1 WHITE PNG to prevent docxtemplater image module from crashing on missing photos
   // Using white instead of transparent because MS Word renders transparent backgrounds as black boxes.
