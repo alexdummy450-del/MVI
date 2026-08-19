@@ -62,7 +62,7 @@ export async function GET(request: Request) {
     const rows = accidents.map((a: any) => {
       const d = new Date(a.occurred_at);
       const dateStr = d.toLocaleDateString();
-      const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const timeStr = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
       
       const vtNumbers = a.inspections?.map((i: any) => i.vt_number).join(', ') || 'None';
       const status = a.reports?.[0]?.status || 'No Report';
