@@ -175,11 +175,10 @@ export async function generateDocxBuffer(supabase: any, id: string): Promise<Buf
     }
   }
 
-  const primaryPhotoBuffer = firstAvailablePhotoBase64 || emptyImageBase64;
-
-  // Fallback 1x1 WHITE PNG to prevent docxtemplater image module from crashing on missing photos
-  // Using white instead of transparent because MS Word renders transparent backgrounds as black boxes.
-  const emptyImageBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=";
+  const primaryVehicle = VEHICLES.find((v: any) => v.REG_NO === accident?.primary_vehicle?.plate_number) || VEHICLES[0];
+  const primaryPhotoBuffer = ((primaryVehicle as any)?._photoBase64 && (primaryVehicle as any)._photoBase64 !== emptyImageBase64) 
+    ? (primaryVehicle as any)._photoBase64 
+    : (firstAvailablePhotoBase64 || emptyImageBase64);
 
   // Load the template from the public folder
   const templatePath = path.join(process.cwd(), 'public', 'Fatal_RTA_Report_Template.docx');
